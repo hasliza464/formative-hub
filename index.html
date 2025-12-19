@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Formative Hub – Engineering Science</title>
+  <style>
+    :root{--r:16px}
+    body{font-family:system-ui,Arial;margin:0;background:#f6f7fb;color:#111}
+    .wrap{max-width:920px;margin:0 auto;padding:20px}
+    .card{background:#fff;border-radius:var(--r);padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row>*{flex:1;min-width:200px}
+    h1{font-size:22px;margin:0 0 8px}
+    h2{font-size:18px;margin:0 0 8px}
+    p{margin:6px 0 0;color:#444}
+    label{display:block;font-weight:700;margin:10px 0 6px}
+    input,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #ddd;outline:none}
+    input:focus,select:focus{border-color:#888}
+    button{padding:10px 14px;border:0;border-radius:12px;cursor:pointer;background:#111;color:#fff;font-weight:800}
+    button.secondary{background:#e9e9ef;color:#111}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:12px 0;flex-wrap:wrap}
+    .pill{background:#f0f0f6;border-radius:999px;padding:8px 12px;font-weight:800}
+    .timer{font-variant-numeric:tabular-nums}
+    .q{font-size:18px;font-weight:900;margin:6px 0 14px}
+    .opt{display:block;width:100%;text-align:left;margin:10px 0;background:#f6f7fb;color:#111;border:1px solid #e3e6ee}
+    .opt:hover{filter:brightness(.985)}
+    .muted{color:#666;font-size:14px}
+    .hr{height:1px;background:#eee;margin:14px 0}
+    .notice{padding:10px 12px;border-radius:12px;background:#fff8d6;border:1px solid #ffe8a3}
+    .danger{background:#ffe5e8;border-color:#ffc2c9}
+    code{font-family:ui-monospace,Consolas,monospace}
+    .reviewItem{padding:12px;border:1px solid #eee;border-radius:12px;margin:10px 0;background:#fafbff}
+    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-weight:900;font-size:12px}
+    .ok{background:#eaf7ee;border:1px solid #bfe8c9}
+    .no{background:#fdecee;border:1px solid #f3b7bd}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="card" id="screen-auth">
+      <h1>Formative Hub: Engineering Science</h1>
+      <p>Enter your details, choose the chapter and set, then start.</p>
+
+      <div class="row">
+        <div>
+          <label>Name</label>
+          <input id="name" placeholder="e.g., Aiman" />
+        </div>
+        <div>
+          <label>Class</label>
+          <input id="klass" placeholder="e.g., DKA3A" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Chapter</label>
+          <select id="chapter">
+            <option value="1">Chapter 1</option><option value="2">Chapter 2</option><option value="3">Chapter 3</option>
+            <option value="4">Chapter 4</option><option value="5">Chapter 5</option><option value="6">Chapter 6</option><option value="7">Chapter 7</option>
+          </select>
+        </div>
+        <div>
+          <label>Set</label>
+          <select id="set">
+            <option value="1">Set 1</option><option value="2">Set 2</option><option value="3">Set 3</option><option value="4">Set 4</option><option value="5">Set 5</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row" style="align-items:center;">
+        <button id="btnStart">Start Quiz</button>
+        <button class="secondary" id="btnDemo" title="Runs without fetching (for testing)">Demo Mode</button>
+      </div>
+
+      <div id="homeMsg" style="margin-top:12px" class="notice">
+        <b>Setup:</b> Replace <code>https://script.google.com/macros/s/AKfycbxx2bsqQ9GKQJLFNSaR8Tl6nuHw5mWw_JQa9HAo1D4Acc98bA9c3o2nBgP6HqX6TIcl/exec</code> (in the code) with your Apps Script Web App URL (ending with <code>/exec</code>).
+      </div>
+    </div>
+
+    <div class="card" id="screen-quiz" style="display:none;">
+      <div class="topbar">
+        <div class="pill" id="pillUser"></div>
+        <div class="pill timer">⏱ <span id="timer">20</span>s</div>
+        <div class="pill" id="pillProgress"></div>
+      </div>
+
+      <div class="q" id="qText"></div>
+      <div id="options"></div>
+
+      <div class="hr"></div>
+
+      <div class="row" style="justify-content: space-between; align-items:center;">
+        <div class="muted" id="feedback"></div>
+        <div class="row" style="justify-content:flex-end;">
+          <button class="secondary" id="btnSkip">Skip</button>
+          <button id="btnNext" disabled>Next</button>
+        </div>
+      </div>
+
+      <p class="muted">The timer will auto-skip when time ends.</p>
+    </div>
+
+    <div class="card" id="screen-result" style="display:none;">
+      <h2>Results</h2>
+      <p id="resultText"></p>
+      <div class="hr"></div>
+      <div id="review"></div>
+      <div class="hr"></div>
+      <button class="secondary" id="btnRestart">Back to Home</button>
+    </div>
+
+  </div>
+
+<script>
+  // ✅ PUT YOUR APPS SCRIPT /exec URL HERE
+  const QUESTIONS_API_URL = "PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE";
+
+  // ✅ Timer = 20 seconds (English)
+  const TIME_PER_QUESTION = 20;
+
+  let student = { name:"", klass:"", chapter:"1", set:"1" };
+  let questions = [];
+  let idx = 0;
+  let score = 0;
+  let timerId = null;
+  let timeLeft = TIME_PER_QUESTION;
+  let answered = false;
+  let reviewLog = []; // {q, chosen, correct, timedOut}
+
+  const $ = (id) => document.getElementById(id);
+
+  function show(screenId){
+    ["screen-auth","screen-quiz","screen-result"].forEach(s => $(s).style.display="none");
+    $(screenId).style.display="block";
+  }
+
+  function setHomeMsg(html, danger=false){
+    $("homeMsg").className = "notice" + (danger ? " danger" : "");
+    $("homeMsg").innerHTML = html;
+  }
+
+  function sanitizeAnswer(a){ return String(a||"").trim().toUpperCase(); }
+  function sortByQno(a,b){ return Number(a.qno)-Number(b.qno); }
+
+  async function fetchQuestions(chapter, set){
+    if(!QUESTIONS_API_URL || QUESTIONS_API_URL.includes("PASTE_")){
+      throw new Error("Please set QUESTIONS_API_URL to your Apps Script /exec URL.");
+    }
+    const url = `${QUESTIONS_API_URL}?chapter=${encodeURIComponent(chapter)}&set=${encodeURIComponent(set)}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    if(!Array.isArray(data) || data.length===0) throw new Error("No questions found for this chapter & set.");
+    return data.map(q => ({
+      qno:q.qno, question:q.question, A:q.A, B:q.B, C:q.C, D:q.D,
+      answer:sanitizeAnswer(q.answer), explain:q.explain||""
+    })).sort(sortByQno);
+  }
+
+  function demoQuestions(){
+    return [
+      {qno:1,question:"Demo: What is a physical quantity?",A:"A property that can be measured",B:"A random idea",C:"A drawing",D:"A unitless guess",answer:"A",explain:"Physical quantity is measurable."},
+      {qno:2,question:"Demo: SI unit of length is…",A:"kg",B:"m",C:"s",D:"A",answer:"B",explain:"Length base unit is metre (m)."}
+    ];
+  }
+
+  function stopTimer(){ if(timerId) clearInterval(timerId); timerId=null; }
+  function startTimer(){
+    stopTimer();
+    timeLeft = TIME_PER_QUESTION;
+    $("timer").textContent = timeLeft;
+    timerId = setInterval(() => {
+      timeLeft -= 1;
+      $("timer").textContent = timeLeft;
+      if(timeLeft<=0){
+        stopTimer();
+        autoSkip(true);
+      }
+    }, 1000);
+  }
+
+  function lockOptions(){
+    [...$("options").querySelectorAll("button")].forEach(b => b.disabled=true);
+  }
+
+  function renderQuestion(){
+    answered=false;
+    $("feedback").textContent="";
+    $("btnNext").disabled=true;
+
+    const q = questions[idx];
+    $("pillUser").textContent = `${student.name} (${student.klass}) • Chapter ${student.chapter} Set ${student.set}`;
+    $("pillProgress").textContent = `Question ${idx+1} / ${questions.length}`;
+    $("qText").textContent = q.question || "(No question text)";
+
+    const opts = [["A",q.A],["B",q.B],["C",q.C],["D",q.D]];
+    $("options").innerHTML = "";
+    opts.forEach(([k,txt]) => {
+      const btn = document.createElement("button");
+      btn.className = "opt";
+      btn.textContent = `${k}) ${txt ?? ""}`;
+      btn.onclick = () => choose(k);
+      $("options").appendChild(btn);
+    });
+
+    startTimer();
+  }
+
+  function choose(letter){
+    if(answered) return;
+    answered=true;
+    stopTimer();
+    lockOptions();
+
+    const q = questions[idx];
+    const chosen = sanitizeAnswer(letter);
+    const correct = q.answer;
+    const isCorrect = chosen === correct;
+    if(isCorrect) score += 1;
+
+    $("feedback").textContent = isCorrect
+      ? "Correct! +1 point."
+      : `Incorrect. Correct answer: ${correct}.`;
+
+    reviewLog.push({ q, chosen, correct:isCorrect, timedOut:false });
+    $("btnNext").disabled=false;
+  }
+
+  function autoSkip(timedOut=false){
+    if(answered) return;
+    answered=true;
+    stopTimer();
+    lockOptions();
+
+    $("feedback").textContent = timedOut ? "Time's up! Skipped." : "Skipped.";
+    reviewLog.push({ q:questions[idx], chosen:"", correct:false, timedOut });
+    $("btnNext").disabled=false;
+  }
+
+  function next(){
+    if(!answered) return;
+    if(idx < questions.length-1){
+      idx += 1;
+      renderQuestion();
+    } else {
+      finish();
+    }
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[s]));
+  }
+
+  function finish(){
+    stopTimer();
+    show("screen-result");
+
+    $("resultText").textContent =
+      `${student.name} (${student.klass}) — Score: ${score} / ${questions.length} (Chapter ${student.chapter} Set ${student.set})`;
+
+    const rev = $("review");
+    rev.innerHTML = "";
+    reviewLog.forEach((r,i) => {
+      const badge = r.correct
+        ? `<span class="badge ok">Correct</span>`
+        : `<span class="badge no">${r.timedOut ? "Time Up" : (r.chosen ? "Wrong" : "Skipped")}</span>`;
+      const explain = r.q.explain
+        ? `<div class="muted"><b>Explanation:</b> ${escapeHtml(r.q.explain)}</div>`
+        : "";
+      const item = document.createElement("div");
+      item.className = "reviewItem";
+      item.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+          <div><b>Q${i+1}.</b> ${escapeHtml(r.q.question||"")}</div>
+          <div>${badge}</div>
+        </div>
+        <div class="muted">Your answer: <b>${escapeHtml(r.chosen||"—")}</b> | Correct answer: <b>${escapeHtml(r.q.answer||"")}</b></div>
+        ${explain}
+      `;
+      rev.appendChild(item);
+    });
+  }
+
+  function resetAll(){
+    questions=[]; idx=0; score=0; answered=false; reviewLog=[];
+    stopTimer();
+    $("timer").textContent = TIME_PER_QUESTION;
+    $("feedback").textContent="";
+    $("options").innerHTML="";
+    $("qText").textContent="";
+    $("btnNext").disabled=true;
+  }
+
+  $("btnStart").addEventListener("click", async () => {
+    student.name = $("name").value.trim();
+    student.klass = $("klass").value.trim();
+    student.chapter = $("chapter").value;
+    student.set = $("set").value;
+
+    if(!student.name || !student.klass){
+      setHomeMsg("Please enter <b>Name</b> and <b>Class</b> before starting.", true);
+      return;
+    }
+
+    setHomeMsg("Loading questions… Please wait.");
+
+    try{
+      resetAll();
+      questions = await fetchQuestions(student.chapter, student.set);
+      show("screen-quiz");
+      renderQuestion();
+    } catch(err){
+      console.error(err);
+      setHomeMsg(`<b>Error:</b> ${escapeHtml(err.message)}<br><br>
+      Tip: Make sure your Apps Script URL ends with <code>/exec</code>.`, true);
+    }
+  });
+
+  $("btnDemo").addEventListener("click", () => {
+    student.name = $("name").value.trim() || "Demo Student";
+    student.klass = $("klass").value.trim() || "DEMO";
+    student.chapter = $("chapter").value;
+    student.set = $("set").value;
+    resetAll();
+    questions = demoQuestions();
+    show("screen-quiz");
+    renderQuestion();
+  });
+
+  $("btnSkip").addEventListener("click", () => autoSkip(false));
+  $("btnNext").addEventListener("click", () => next());
+  $("btnRestart").addEventListener("click", () => { resetAll(); show("screen-auth"); });
+
+  $("klass").addEventListener("keydown", (e) => { if(e.key==="Enter") $("btnStart").click(); });
+</script>
+</body>
+</html>
